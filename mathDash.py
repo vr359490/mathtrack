@@ -747,6 +747,7 @@ def main():
     # external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
     # CSS is placed in styles.css
     app = dash.Dash(__name__, use_pages=True, pages_folder="")
+    server = app.server
 
     # App settings and layout
     app_layout(app, learn_plan_df, sessions_left['Full Name'], attendance_df, all_attendance_df, low_attend_report)
