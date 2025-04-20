@@ -1,1 +1,1 @@
-pandasseleniumdashpython-dotenvplotly
+pandasseleniumdashpython-dotenvplotlygunicorn
