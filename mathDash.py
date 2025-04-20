@@ -43,7 +43,7 @@ def login(browser, wait):
     password_field.send_keys(PASSWORD)
 
     login_field = wait.until(EC.presence_of_all_elements_located((By.ID, "login")))
-    login_field.click()
+    browser.execute_script("arguments[0].click();", login_field[0])
 
 def learn_plan_scrape(browser, wait, student_roster):
 
