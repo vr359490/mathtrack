@@ -1,1 +1,7 @@
-pandasseleniumdashpython-dotenvplotlygunicorn
+pandas
+selenium
+dash
+python-dotenv
+plotly
+gunicorn
+lxml
