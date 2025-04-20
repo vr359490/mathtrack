@@ -28,7 +28,7 @@ def get_browser(url):
     browser.get(url)
     return browser
 
-def login(browser):
+def login(browser, wait):
 
     # Load credentials securely
     # load_dotenv()
@@ -42,7 +42,7 @@ def login(browser):
     password_field = browser.find_element(By.ID, "Password")
     password_field.send_keys(PASSWORD)
 
-    login_field = browser.find_element(By.ID, "login")
+    login_field = wait.until(EC.presence_of_all_elements_located((By.ID, "login")))
     login_field.click()
 
 def learn_plan_scrape(browser, wait, student_roster):
@@ -724,7 +724,7 @@ def main():
     wait = WebDriverWait(browser, 10)
 
     # Grab credentials and login
-    login(browser)
+    login(browser, wait)
 
     # Web scrape stage
     sessions_left = sessions_scrape(wait)
