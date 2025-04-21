@@ -686,10 +686,10 @@ def app_layout(app, process_df, student_roster, attendance_df, all_attendance_df
     ],style={'display':'inline-block','width':'17%', 'verticalAlign':'top'}),
     dash.page_container])
 # --------------------------------------------------------------------------------------------------------------
-def open_browser():
-    time.sleep(2)  # Allow a brief moment for the server to start
-    webbrowser.open("http://127.0.0.1:8050/")
-    quit()
+# def open_browser():
+#     time.sleep(2)  # Allow a brief moment for the server to start
+#     webbrowser.open("http://127.0.0.1:8050/")
+#     quit()
 
 def pk_process_fig(student, pk_completion):
 
@@ -806,50 +806,47 @@ def string_check(string):
         value = 0
     return int(value)
 
-def main():
-    print("run")
+app = dash.Dash(__name__, use_pages=True, pages_folder="")
+server = app.server
 
-    # Initialize browser at given URL
-    # Scraping Roster first allows us to gather list of student names
-    # url = 'https://radius.mathnasium.com/Attendance/Roster'
-    # browser = get_browser(url)
+#def main():
+print("run")
 
-    browser = ""
-    wait = ""
+# Initialize browser at given URL
+# Scraping Roster first allows us to gather list of student names
+# url = 'https://radius.mathnasium.com/Attendance/Roster'
+# browser = get_browser(url)
 
-    
+browser = ""
+wait = ""
 
-    # wait = WebDriverWait(browser, 10)
+# wait = WebDriverWait(browser, 10)
 
+# Grab credentials and login
+#login(browser, wait)
 
-    # Grab credentials and login
-    #login(browser, wait)
+# Web scrape stage
+sessions_left = sessions_scrape(wait)
+sessions_left['Full Name'] = sessions_left['First Name'].astype(str) + " " + sessions_left['Last Name'].astype(str)
+#sessions_left = sessions_left.head(2)
 
-    # Web scrape stage
-    sessions_left = sessions_scrape(wait)
-    sessions_left['Full Name'] = sessions_left['First Name'].astype(str) + " " + sessions_left['Last Name'].astype(str)
-    #sessions_left = sessions_left.head(2)
+# Do we care about attendance of inactive students?
+attendance_df, all_attendance_df, low_attend_report = attend_scrape(sessions_left)
+learn_plan_df, inactive_students = learn_plan_scrape(browser, wait, sessions_left)
+print("Unable to find data for the following students: ", inactive_students)
 
-    # Do we care about attendance of inactive students?
-    attendance_df, all_attendance_df, low_attend_report = attend_scrape(sessions_left)
-    learn_plan_df, inactive_students = learn_plan_scrape(browser, wait, sessions_left)
-    print("Unable to find data for the following students: ", inactive_students)
+# Done scraping
+#browser.quit()
 
-    # Done scraping
-    #browser.quit()
+# Initialize CSS styling and dash app
+# external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+# CSS is placed in styles.css
 
-    # Initialize CSS styling and dash app
-    # external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-    # CSS is placed in styles.css
-    app = dash.Dash(__name__, use_pages=True, pages_folder="")
-    server = app.server
+# App settings and layout
+app_layout(app, learn_plan_df, sessions_left['Full Name'], attendance_df, all_attendance_df, low_attend_report)
 
-    # App settings and layout
-    app_layout(app, learn_plan_df, sessions_left['Full Name'], attendance_df, all_attendance_df, low_attend_report)
-
-    # Run dash app
-    if __name__ == '__main__':
-        threading.Thread(target=open_browser, daemon=True).start()  # Start browser in background
-        app.run() 
-
-main()
+# Run dash app
+if __name__ == '__main__':
+    #threading.Thread(target=open_browser, daemon=True).start()  # Start browser in background
+    app.run() 
+#main()
