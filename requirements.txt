@@ -6,3 +6,4 @@ plotly
 gunicorn
 lxml
 boto3
+openpyxl
