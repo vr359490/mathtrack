@@ -158,22 +158,28 @@ def learn_plan_scrape(browser, wait, student_roster):
 
 def sessions_scrape(wait):
 
-    centerDropdown = wait.until(EC.presence_of_element_located((By.XPATH, "//div[@class='theGCSMulti']//input[@class='k-input k-readonly']")))
+    # centerDropdown = wait.until(EC.presence_of_element_located((By.XPATH, "//div[@class='theGCSMulti']//input[@class='k-input k-readonly']")))
 
-    time.sleep(2)
+    # time.sleep(2)
 
-    centerDropdown.send_keys('v') # 'v' for Verona
+    # centerDropdown.send_keys('v') # 'v' for Verona
 
-    time.sleep(5)
-    centerDropdown.send_keys(Keys.ENTER)
+    # time.sleep(5)
+    # centerDropdown.send_keys(Keys.ENTER)
 
-    time.sleep(3)
-    table = wait.until(EC.presence_of_all_elements_located((By.ID, "gridRoster")))
-    roster = table[0].get_attribute('outerHTML')
+    # time.sleep(3)
+    # table = wait.until(EC.presence_of_all_elements_located((By.ID, "gridRoster")))
+    # roster = table[0].get_attribute('outerHTML')
 
-    roster_df = pd.read_html(StringIO(roster))[0]
+    # roster_df = pd.read_html(StringIO(roster))[0]
 
-    sessions_left = roster_df[['First Name', 'Last Name','Membership Type', 'Remaining']]
+    # sessions_left = roster_df[['First Name', 'Last Name','Membership Type', 'Remaining']]
+
+    # sessions_left.to_csv('sessions_left.csv', index=False)
+
+    sessions_left = down(s3, 'sessions_left.csv')
+    print(sessions_left)
+    print(sessions_left.columns)
 
     return sessions_left
 
@@ -231,8 +237,11 @@ def down(s3, filename):
         
         obj_content = response["Body"].read()
         obj_content = BytesIO(obj_content)
-
-        zaza = pd.read_excel(obj_content)
+        if ".csv" in filename:
+            zaza = pd.read_csv(obj_content)
+        else:
+            zaza = pd.read_excel(obj_content)
+        
 
     return zaza
 
@@ -798,16 +807,23 @@ def string_check(string):
     return int(value)
 
 def main():
+    print("run")
 
     # Initialize browser at given URL
     # Scraping Roster first allows us to gather list of student names
-    url = 'https://radius.mathnasium.com/Attendance/Roster'
-    browser = get_browser(url)
+    # url = 'https://radius.mathnasium.com/Attendance/Roster'
+    # browser = get_browser(url)
 
-    wait = WebDriverWait(browser, 10)
+    browser = ""
+    wait = ""
+
+    
+
+    # wait = WebDriverWait(browser, 10)
+
 
     # Grab credentials and login
-    login(browser, wait)
+    #login(browser, wait)
 
     # Web scrape stage
     sessions_left = sessions_scrape(wait)
@@ -819,12 +835,8 @@ def main():
     learn_plan_df, inactive_students = learn_plan_scrape(browser, wait, sessions_left)
     print("Unable to find data for the following students: ", inactive_students)
 
-    # Drop inactive students
-    for inactive_student in inactive_students:
-        sessions_left = sessions_left[sessions_left['Full Name'] != inactive_student]
-
     # Done scraping
-    browser.quit()
+    #browser.quit()
 
     # Initialize CSS styling and dash app
     # external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
