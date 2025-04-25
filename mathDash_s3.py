@@ -1,7 +1,6 @@
 import pandas as pd
 import dash
 from dash import dash_table, dcc, html, Input, Output, callback
-import dash_bootstrap_components as dbc
 import os
 import plotly.graph_objects as go
 from io import BytesIO
