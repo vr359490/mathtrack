@@ -1,6 +1,7 @@
 import pandas as pd
 import dash
 from dash import dash_table, dcc, html, Input, Output, callback
+import dash_bootstrap_components as dbc
 import os
 import plotly.graph_objects as go
 from io import BytesIO
@@ -211,12 +212,22 @@ def dwp_process(data):
     
     return pk_completion
 
+def find_recent_lp(process_df,student):
+        assigned = pd.to_datetime(process_df[student]['Assigned'])
+        max_date = assigned.max()
+        index = assigned[assigned==max_date].index
+        index_max_date = list(index)[0]
+        most_recent_lp = process_df[student]['Learning Plan Name'][index_max_date]
+        return most_recent_lp
+
 def app_layout(app, process_df, student_roster, attendance_df, all_attendance_df, low_attend_report):
 
     pk_completion = dwp_scrape_ALL()
 
-    student_summary = attendance_df.loc[attendance_df['Full Name']=='A.J. Kuehn']
-    student_summary.loc[0, 'Mastery Rate']= round(pk_completion['A.J. Kuehn']["Average Sessions to Master PK"],2)
+    first_student = student_roster[0]
+
+    student_summary = attendance_df.loc[attendance_df['Full Name']==first_student]
+    student_summary.loc[0, 'Mastery Rate']= round(pk_completion[first_student]["Average Sessions to Master PK"],2)
 
     learning_rate = float(round(1/student_summary['Mastery Rate'], 2))
     
@@ -226,7 +237,9 @@ def app_layout(app, process_df, student_roster, attendance_df, all_attendance_df
 
     student_summary = student_summary.drop('Full Name', axis = 1)
     
-    learning_plans = list(process_df['A.J. Kuehn']['Learning Plan Name'].unique())
+    learning_plans = list(process_df[first_student]['Learning Plan Name'].unique())
+
+    most_recent_lp = find_recent_lp(process_df, first_student)
 
     # Initialize main page layout
     main_view = html.Div([
@@ -234,7 +247,7 @@ def app_layout(app, process_df, student_roster, attendance_df, all_attendance_df
         html.H5(id = 'lp-header'),
         dash_table.DataTable(
             id='lp-table',
-            columns=[{"name": i, "id": i} for i in process_df['A.J. Kuehn'].columns if i != 'Learning Plan Name'],
+            columns=[{"name": i, "id": i} for i in process_df[first_student].columns if i != 'Learning Plan Name'],
             style_table={'height': '300px'},
             style_cell={
                 'color': 'black',
@@ -364,11 +377,23 @@ def app_layout(app, process_df, student_roster, attendance_df, all_attendance_df
     )
     def update_attendance_report(threshold):
         return low_attend_report[low_attend_report['Avg Attend/m']<threshold].to_dict('records')
+
+    @callback(
+        Output('pandas-dropdown-3', 'value'),
+        Output('pandas-dropdown-3', 'options'),
+        Input('pandas-dropdown-1', 'value')
+        )
+    def update_dropdown3_val(student):
+
+        most_recent_lp = find_recent_lp(process_df, student)
+
+        return most_recent_lp, list(process_df[student]['Learning Plan Name'].unique())
     
     @callback(
         Output('attend-graph', 'figure'),
         Output('low-attend', 'active_cell'),
         Output('attendance-header', 'children'),
+        Output('pandas-dropdown-1', 'value'),
         Input('pandas-dropdown-1', 'value'),
         Input('low-attend', 'active_cell'),
         Input('low-attend', 'data'),
@@ -390,8 +415,8 @@ def app_layout(app, process_df, student_roster, attendance_df, all_attendance_df
         fig2.update_layout(bargap=0.2, height=350, margin=dict(l=30, r=30, b=25, t=25), showlegend=False)
 
         updated_header = 'Attendance Over Time For ' + student.split(" ")[0]
-        
-        return fig2, None, updated_header
+
+        return fig2, None, updated_header, student
 
     @callback(
             Output('student-summary-table','data'),
@@ -407,13 +432,6 @@ def app_layout(app, process_df, student_roster, attendance_df, all_attendance_df
         return student_summary.to_dict('records')
 
     @callback(
-        Output('pandas-dropdown-3', 'options'),
-        Input('pandas-dropdown-1', 'value')
-    )
-    def update_dropdown3_list(student):
-        return list(process_df[student]['Learning Plan Name'].unique())
-
-    @callback(
         Output('pandas-dropdown-3', 'disabled'),
         Input('pandas-dropdown-2', 'value')
     )
@@ -422,23 +440,6 @@ def app_layout(app, process_df, student_roster, attendance_df, all_attendance_df
         if report=="Attendance Report":
             disabled = True
         return disabled
-
-    @callback(
-        Output('pandas-dropdown-3', 'value'),
-        Input('pandas-dropdown-1', 'value')
-        )
-    def update_dropdown3_val(student):
-        assigned = pd.to_datetime(process_df[student]['Assigned'])
-    
-        max_date = assigned.max()
-
-        index = assigned[assigned==max_date].index
-
-        index_max_date = list(index)[0]
-        
-        most_recent_lp = process_df[student]['Learning Plan Name'][index_max_date]
-
-        return most_recent_lp
 
     @callback(
         Output('lp-table', 'data'),
@@ -482,13 +483,14 @@ def app_layout(app, process_df, student_roster, attendance_df, all_attendance_df
     html.Div([
         dcc.Dropdown(
             options = list(student_roster),
-            value = 'A.J. Kuehn',
+            value = first_student,
             id='pandas-dropdown-1')   
     ],style={'display':'inline-block','width':'48%', 'verticalAlign':'top'}),
     html.Div(style={'display':'inline-block','width':'1%', 'verticalAlign':'top'}),
     html.Div([
         dcc.Dropdown(
             options = learning_plans,
+            value = most_recent_lp,
             id='pandas-dropdown-3')   
     ],style={'display':'inline-block','width':'33%', 'verticalAlign':'top'}),
     html.Div(style={'display':'inline-block','width':'1%', 'verticalAlign':'top'}),
@@ -619,7 +621,7 @@ def string_check(string):
         value = 0
     return int(value)
 
-app = dash.Dash(__name__, use_pages=True, pages_folder="")
+app = dash.Dash(__name__,use_pages=True, pages_folder="")
 server = app.server
 
 sessions_left = sessions_scrape()
