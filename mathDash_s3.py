@@ -354,7 +354,7 @@ def app_layout(app, process_df, student_roster, attendance_df, all_attendance_df
             dcc.Graph(
                 id = 'attend-graph',
             ),
-            html.Div(id='test')
+            html.Div(id='scroll-output')
     ],style={'display':'inline-block','width':'51%', 'verticalAlign':'top'}),
     ])
 
@@ -467,11 +467,7 @@ def app_layout(app, process_df, student_roster, attendance_df, all_attendance_df
         updated_header = student + ' Learning Plan'
         return updated_header
     
-    default_view = html.Div([])
-
-    dash.register_page("default", path = '/', layout = default_view)
-    #dash.register_page("main", path = '/', layout = main_view)
-    dash.register_page("main", layout = main_view)
+    dash.register_page("main", path = '/', layout = main_view)
     dash.register_page("attend",layout = attend_view)
 
 # --------------------------------------------------------------------------------------------------------------
@@ -486,7 +482,7 @@ def app_layout(app, process_df, student_roster, attendance_df, all_attendance_df
     html.Div([
         dcc.Dropdown(
             options = list(student_roster),
-            #value = 'A.J. Kuehn',
+            value = 'A.J. Kuehn',
             id='pandas-dropdown-1')   
     ],style={'display':'inline-block','width':'48%', 'verticalAlign':'top'}),
     html.Div(style={'display':'inline-block','width':'1%', 'verticalAlign':'top'}),
@@ -500,15 +496,14 @@ def app_layout(app, process_df, student_roster, attendance_df, all_attendance_df
         dcc.Dropdown(
             options = [
             {
-            #"label":dcc.Link(children="Student Report" ,href='/'),
-            "label":dcc.Link(children="Student Report" ,href='/main'),
+            "label":dcc.Link(children="Student Report" ,href='/'),
             "value":"Student Report"},
             {
             "label":dcc.Link(children="Attendance Report" ,href='/attend'),
             "value":"Attendance Report"
             },
         ],
-            value = 'Default Report',
+            value = 'Student Report',
             id='pandas-dropdown-2')   
     ],style={'display':'inline-block','width':'17%', 'verticalAlign':'top'}),
     dash.page_container])
@@ -534,7 +529,7 @@ def pk_process_fig(student, pk_completion):
     fig = go.Figure(
         data=[go.Bar(
             x=pk_df['Name'],
-            y=pk_df['Sessions Worked On'])], layout_template = "plotly")
+            y=pk_df['Sessions Worked On'])])
 
     avg_sessions = pk_completion[student]["Average Sessions to Master PK"]
 
