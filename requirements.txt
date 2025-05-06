@@ -7,3 +7,4 @@ gunicorn
 lxml
 boto3
 openpyxl
+dash_bootstrap_components
