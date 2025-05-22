@@ -114,15 +114,8 @@ def down(s3, filename):
         response = s3.get_object(Bucket=bucket, Key=obj)
         
         obj_content_0 = response["Body"].read()
-        # print(obj_content)
-        # print(type(obj_content))
-        # print('okokok')
 
         obj_content = BytesIO(obj_content_0)
-
-        print(obj_content)
-        print(type(obj_content))
-        print('okokok')
 
         if ".csv" in filename:
             df = pd.read_csv(obj_content)
@@ -269,7 +262,6 @@ def create_student_summaries(students, attendance_df, pk_completion):
         summaries = pd.concat([summaries, student_summary], ignore_index=True)
 
     summaries_dict = summaries.to_dict('records')
-    #pprint.pprint(summaries_dict)
 
     with open("student_summaries.json", "w") as f:
         json.dump(summaries_dict, f)
@@ -420,9 +412,6 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
 
             low_attend_report = eval(code)
             low_attend_report = low_attend_report.reset_index(drop=True)
-            print("SKLDFJKLSDJF(999)")
-            print(low_attend_report)
-            print("YYY777")
 
         return low_attend_report.to_dict('records')
 
@@ -544,14 +533,7 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
                     'font-family':'Arial',
                     'fontSize':12
             },
-                # style_cell_conditional=[
-                #     {'if' :{'column_id': 'Avg Attend/m'},
-                #                                 'width':'14%' },
-                #     {'if' :{'column_id': 'Mastery Rate'},
-                #                                 'width':'13.5%' },
-                #     {'if' :{'column_id': 'Learning Rate'},
-                #                                 'width':'13.5%' },
-                #                                     ],
+
                 tooltip_header={
                     "Avg Attend/m":"Average number of sessions attended per month",
                     "Mastery Rate":"Average number of sessions to master PK.",
@@ -566,7 +548,7 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
             ),
         html.Div(style={'height':'5px'}),
         html.H5(['Student Averages'],style={'display':'inline-block','width':'84.5%', 'verticalAlign': 'top'}), 
-        # html.Div(dbc.Button("↻"))],style={'display':'inline-block','width':'10%', 'verticalAlign': 'top'}), 
+        
         html.Div([
             html.Div(style={'height':'12px'}),
             dbc.Button("Filter table", id="open", n_clicks=0),
@@ -598,7 +580,6 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
                     is_open=False,
                 ),
                 ],style={'display':'inline-block','width':'15.5%', 'horizontalAlign': 'right'}),
-                #html.Div(style={'height':'10px'}),
                 dash_table.DataTable(
                     id = 'low-attend',
                     columns = [{"name":j, "id":j} for j in low_attend_report.columns],
@@ -672,10 +653,7 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
             dcc.Graph(
                 id = 'attend-graph',
             ),
-            # dcc.Graph(
-            #     # Test/dummy data
-            #     figure=figgy
-            # )
+
     ],style={'display':'inline-block','width':'51%', 'verticalAlign':'top', 'position':'fixed'}),#'position': 'fixed'}),
     ])
 
@@ -751,55 +729,6 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
                 style_list[index]={"display":"none"}
                 return style_list[0],style_list[1],style_list[2],style_list[3], c0,c1,c2,c3
 
-    # @callback(
-    #         Output("dynamic-filter-container", "children", allow_duplicate=True),
-    #         Input("add-filter", "n_clicks"),
-    #         prevent_initial_call=True,
-    # )
-    # def display_dropdowns(n_clicks):
-        
-    #     patched_children = Patch()
-
-    #     new_filter = html.Div(
-    #                 [html.Div([
-    #                 dcc.Dropdown(
-    #                     id = {'type':'filter_column', 'index':n_clicks},
-    #                     options = [{'label':'Average Attendance per Month', 'value':'Avg Attend/m'},
-    #                                 {'label':'Learning Rate','value':'LR'},
-    #                                 {'label':'Mastery Rate','value':'MR'},
-    #                                 {'label':'Remaining Sessions','value':'Remaining'}],
-    #                     placeholder = "Select a column...",
-    #                     value = None
-    #                                 )   
-    #                 ],style={'display':'inline-block','width':'46%', 'verticalAlign':'top'}),
-    #                 html.Div(style={'display':'inline-block','width':'1%', 'verticalAlign':'top'}),
-    #                 html.Div([
-    #                     dcc.Dropdown(
-    #                         id = {'type':'filter_sign', 'index':n_clicks},
-    #                         options = [{'label':'equal to', 'value': '=='},
-    #                                    {'label':'greater than', 'value':'>'},
-    #                                    {'label':'less than', 'value':'<'},
-    #                                    {'label':'greater than or equal to', 'value':'>='},
-    #                                    {'label':'less than or equal to', 'value': '<='}],
-    #                         placeholder = "equal to")   
-    #                 ],style={'display':'inline-block','width':'32%', 'verticalAlign':'top'}),
-    #                 html.Div(style={'display':'inline-block','width':'1%', 'verticalAlign':'top'}),
-    #                 html.Div([
-    #                     dbc.Input(
-    #                         id={'type':'filter_input', 'index':n_clicks},
-    #                         type = "number",
-    #                         style={"height":36},
-    #                         placeholder="")   
-    #                 ],style={'display':'inline-block','width':'17%', 'verticalAlign':'top'}),
-    #                 html.Div([
-    #                     html.Div(style={'height':'4px'}),
-    #                     html.Div([dbc.Button("❌", color="light", id = {'type':'button', 'index':n_clicks}, n_clicks=0)])   
-    #                 ],style={'display':'inline-block','width':'3%', 'verticalAlign':'top'}),
-    #                 html.Div(style={'display':'block','height':'9px'}),],
-    #                 id = {'type':'filter', 'index':n_clicks})
-
-    #     patched_children.append(new_filter)
-    #     return patched_children
  
     @callback(
         Output('low-attend', 'data'),
@@ -871,84 +800,7 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
         )
     def update_generated_summary(student):
         return [generated_summaries[student]]
-    
-        # if clicks is None:
-        
-        #     clicks = {'clicks':1}
-        # else:
-        #     clicks['clicks']+=1
-
-        # fade_id = str(clicks['clicks'])
-
-        # #component_id = "fade" + str(clicks['clicks'])
-
-        # summary_animation = dbc.Fade(
-        #         dbc.Card(
-        #             dbc.CardBody(
-        #                 html.P(
-        #                     children=[generated_summaries[student]],
-        #                     className="card-text")
-        #             )
-        #         ),
-        #         #id=current_fade_id,
-        #         id={"type":"fade", "index": fade_id},
-        #         is_in=True,
-        #         appear=True, 
-        #         exit=False,
-        #         style={"transition": "opacity 1000ms ease"},
-        #         timeout=1000,
-        #     )
-    
-    # @callback(
-        
-    #     #Output('generated-summary', 'children'),
-    #     #Output(current_fade_id, 'is_in'),
-    #     Output('summary-div', 'children'),
-    #     Output('clicks', 'data'),
-    #     Input('pandas-dropdown-1', 'value'),
-    #     State('clicks', 'data'),
-    #     prevent_initial_call=True
-    #     )
-    # def update_generated_summary(student, clicks):
-    
-    #     if clicks is None:
-        
-    #         clicks = {'clicks':1}
-    #     else:
-    #         clicks['clicks']+=1
-
-    #     fade_id = str(clicks['clicks'])
-
-    #     #component_id = "fade" + str(clicks['clicks'])
-
-    #     summary_animation = dbc.Fade(
-    #             dbc.Card(
-    #                 dbc.CardBody(
-    #                     html.P(
-    #                         children=[generated_summaries[student]],
-    #                         className="card-text")
-    #                 )
-    #             ),
-    #             #id=current_fade_id,
-    #             id={"type":"fade", "index": fade_id},
-    #             is_in=True,
-    #             appear=True, 
-    #             exit=False,
-    #             style={"transition": "opacity 1000ms ease"},
-    #             timeout=1000,
-    #         )
-
-    #     return summary_animation, clicks
-        
-
-    # @callback(
-    #     Output({'type': 'fade', 'index': MATCH}, 'is_in'),
-    #     Input('pandas-dropdown-1', 'value'),
-    #     State('clicks', 'data'),
-    #     prevent_initial_call=True
-    # )
-    # def toggle_latest_fade(_, clicks):
-    #     return False  
+      
     
     @callback(
         Output('attend-graph', 'figure'),
@@ -1239,31 +1091,7 @@ def attend_process(attendance, sessions_left):
             # We will assume they were not active at that time, although we should check in the future.                
             attend_vals, attend_keys = truncate_zero_attend(attend_vals, attend_keys, student)
 # ----------------------------------------------------------------
-                        # if attend_count==0 and not attend_vals:
-                        #     continue
-
-                        # if month in attend_keys:
-                        #     ind = attend_keys.index(month)
-                        #     attend_vals[ind] += attend_count
-
-                        # else:
-                        #     attend_keys.append(month)
-                        #     attend_vals.append(attend_count)
-                        # ---------------------------------------------------------
-
-            # print(attend_keys)
-            # print(attend_vals)
             attend_dict[student] = dict(zip(attend_keys, attend_vals))
-
-            # print('asdfasdfasdf')
-            # print(student)
-            # print(attend_dict[student])
-            # print(attend_dict[student].values())
-            
-            # print(list(attend_dict[student].values())[-4:])
-            # print('----')
-            
-            #pprint.pprint(attend_dict[student])
 
             # Exclude students with zero attendance in time range.
             attend_check = attend_dict.get(student)
@@ -1287,26 +1115,19 @@ def attend_process(attendance, sessions_left):
 
             time_range = len(list(attend_dict[student].values())) - 1 + percent_current_month
 
-            #print(time_range)
+            
             total_sessions = sum(list(attend_dict[student].values()))
             revised_avg_attend = total_sessions/time_range
 
-            # if revised_avg_attend==0:
-            #     print(student)
-            #     print('disappointed')
-            # else:
+
             avg_attendance_col.append(revised_avg_attend)
 
-    #pprint.pprint(attend_dict)
+    
     all_attendance_df = pd.DataFrame(attend_dict)
 
-    #print(avg_attendance_col)
 
     # Calculate average excluding students with 0 attendance, they're considered inactive.
     center_attend_avg = sum(avg_attendance_col)/(len(avg_attendance_col) - avg_attendance_col.count(0))
-    #print(center_attend_avg)
-    #print(avg_attendance_col)
-    # print("POIEFJPOIEFPOWEIJF")
 
     sessions_per_m = {}
     index = []
@@ -1346,13 +1167,6 @@ def truncate_zero_attend(attend_list, month_list, student):
         if not attend_list: 
             break
     
-    #Truncate trailing zeros if they're inactive (>3 months no attend)
-
-    # THis isn't really that helpful right now
-    # if attend_list:
-    #     if sum(attend_list[-4:])==0:
-    #         attend_list = attend_list[0:-1]
-    #         month_list = month_list[0:-1]
 
 
     return attend_list, month_list
