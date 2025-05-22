@@ -4,4 +4,4 @@ This is a dashboard project to enable managers at Mathnasium to see key metrics 
 
 mathDash_s3.py contains main dashboard code. This involves downloading scraped and cleaned data from AWS S3 cloud storage.
 
-Before the data was stored and pulled from S3, the scraping stage was done every time the dashboard was executed. This is in mathDash_with_scraping.py. To maintain updated data in the dashboard and S3, a separate scraping script should be made.
+A separate scraping script was made to maintain updated data in the dashboard and S3.
