@@ -11,8 +11,6 @@ import time
 import json
 from collections import OrderedDict
 
-import pprint
-
 import calendar
 import datetime
 from datetime import timedelta
@@ -102,33 +100,23 @@ def down(s3, filename):
 
     ulti = s3.list_objects_v2(Bucket=bucket)
     
-    xlsx_keys = [
-            obj["Key"] for obj in ulti.get("Contents", [])
-            if obj["Key"].endswith(".xlsx")
-        ]
+    xlsx_keys = [obj["Key"] for obj in ulti.get("Contents", [])
+            if obj["Key"].endswith(".xlsx")]
     
     if filename: xlsx_keys=[filename]
 
     for obj in xlsx_keys:
 
         response = s3.get_object(Bucket=bucket, Key=obj)
-        
         obj_content_0 = response["Body"].read()
-
         obj_content = BytesIO(obj_content_0)
 
         if ".csv" in filename:
             df = pd.read_csv(obj_content)
-        elif ".json" in filename:
-            print('inside')
-
-            #json_str = obj_content.decode('utf-8')
-            
+        elif ".json" in filename:            
             df = json.loads(obj_content_0)
-
         else:
             df = pd.read_excel(obj_content)
-
     return df
 
 def dwp_scrape_ALL():
@@ -166,7 +154,6 @@ def dwp_process(data):
         if student not in pk_completion.keys():
             pk_completion[student] = {}
             pk_completion[student]["Number of PKs"] = 0
-            # pk_completion[student]["Number of Mastered PKs"] = 0
             pk_completion[student]["Total Sessions Worked On"] = 0
 
         for pk_stat_pair in pk_status_list:
@@ -178,10 +165,8 @@ def dwp_process(data):
 
                 if char=="(":
                     paren_count+=1
-
                 if char==")":
                     paren_count-=1
-
                 if char==")" and paren_count==0:
                     status = pk_stat_pair[index+2:]
                     break
@@ -240,8 +225,12 @@ def find_recent_lp(process_df,student):
     assigned = pd.to_datetime(process_df[student]['Assigned'])
     max_date = assigned.max()
     index = assigned[assigned==max_date].index
-    index_max_date = list(index)[0]
-    most_recent_lp = process_df[student]['Learning Plan Name'][index_max_date]
+
+    if list(index): 
+        index_max_date = list(index)[0]
+        most_recent_lp = process_df[student]['Learning Plan Name'][index_max_date]
+    else:
+        most_recent_lp=None
 
     return most_recent_lp
 
@@ -267,6 +256,34 @@ def create_student_summaries(students, attendance_df, pk_completion):
         json.dump(summaries_dict, f)
 
     return summaries
+
+def create_center_attendance_graph(all_attendance_df):
+    # Calculate mean attendance for each month
+    monthly_means = all_attendance_df.mean(axis=1)
+    y_max = math.ceil(max(monthly_means))
+    
+    # Create bar trace for monthly averages
+    bar_trace = go.Bar(
+        name="Center Average",
+        x=list(all_attendance_df.index),
+        y=monthly_means,
+        showlegend=False
+    )
+    
+    # Calculate and create moving average trace
+    moving_avg = monthly_means.rolling(window=3, min_periods=1).mean()
+    scatter_trace = go.Scatter(
+        name="3-Month Average",
+        x=list(all_attendance_df.index),
+        y=moving_avg,
+        showlegend=False
+    )
+    
+    # Create figure with both traces
+    fig = go.Figure(data=[bar_trace, scatter_trace])
+    
+    
+    return fig, y_max
 
 def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m, center_attend_avg):
 
@@ -309,7 +326,7 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
 
     center_summary = pd.DataFrame({"Center": ["Verona"], "Mastery Rate":[avg_mr],"Learning Rate":[avg_lr],"Avg Attend/m":[round(center_attend_avg,2)]})
 
-    #center_sum_json = center_summary.to_dict('records')
+    center_sum_json = center_summary.to_dict('records')
 
     # with open("center_averages.json", "w") as f:
     #     json.dump(center_sum_json[0], f)
@@ -503,7 +520,6 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
                             className="card-text")
                     )
                 ),
-                #id=current_fade_id,
                 is_in=True,
                 appear=True,
                 exit=False, 
@@ -533,7 +549,6 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
                     'font-family':'Arial',
                     'fontSize':12
             },
-
                 tooltip_header={
                     "Avg Attend/m":"Average number of sessions attended per month",
                     "Mastery Rate":"Average number of sessions to master PK.",
@@ -546,9 +561,8 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
                 tooltip_delay=0,
                 tooltip_duration=None,
             ),
-        html.Div(style={'height':'5px'}),
+        html.Div(style={'height':'15px'}),
         html.H5(['Student Averages'],style={'display':'inline-block','width':'84.5%', 'verticalAlign': 'top'}), 
-        
         html.Div([
             html.Div(style={'height':'12px'}),
             dbc.Button("Filter table", id="open", n_clicks=0),
@@ -648,12 +662,19 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
                 tooltip_delay=0,
                 tooltip_duration=None,
             ),
-            html.H6(id = 'attendance-header'),
+
+            html.Div(style={'height':'5px'}),
+
+            html.H6(id = 'attendance-header', style={'display':'inline-block','width':'47%', 'verticalAlign':'top'}),
+            html.H6(["Verona's Average Attendance"], style={'display':'inline-block','width':'47%', 'verticalAlign':'top'}),
             
             dcc.Graph(
                 id = 'attend-graph',
-            ),
-
+            style={'display':'inline-block','width':'47%', 'verticalAlign':'top'}),
+            
+            dcc.Graph(
+                id='center-attendance-graph',
+        style={'display':'inline-block','width':'47%', 'verticalAlign':'top'}),
     ],style={'display':'inline-block','width':'51%', 'verticalAlign':'top', 'position':'fixed'}),#'position': 'fixed'}),
     ])
 
@@ -728,7 +749,6 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
             else:
                 style_list[index]={"display":"none"}
                 return style_list[0],style_list[1],style_list[2],style_list[3], c0,c1,c2,c3
-
  
     @callback(
         Output('low-attend', 'data'),
@@ -746,7 +766,7 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
         State('filter-input-3', 'value'),
         Input('run', 'n_clicks')
     )
-    def modal_query(col0,col1,col2,col3, sign0,sign1,sign2,sign3, in0,in1,in2,in3, n_clicks):# mean_attend, n_clicks):
+    def modal_query(col0,col1,col2,col3, sign0,sign1,sign2,sign3, in0,in1,in2,in3, n_clicks):
         
         time.sleep(0.4)
 
@@ -800,14 +820,13 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
         )
     def update_generated_summary(student):
         return [generated_summaries[student]]
-      
     
     @callback(
         Output('attend-graph', 'figure'),
         Output('low-attend', 'active_cell'),
         Output('attendance-header', 'children'),
         Output('pandas-dropdown-1', 'value'),
-        #Output('center-summary', 'data'),
+        Output('center-attendance-graph', 'figure'),
         Input('pandas-dropdown-1', 'value'),
         Input('low-attend', 'active_cell'),
         Input('low-attend', 'data'),
@@ -816,8 +835,6 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
         
         low_attend_data = pd.DataFrame(low_attend_data)
 
-        
-
         if active_cell: 
             rowNum = active_cell['row']
             colNum = active_cell['column']
@@ -825,20 +842,35 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
         
         bar_trace = go.Bar(name="Attendance",x=list(all_attendance_df.index), y=all_attendance_df[student], showlegend=False)#, marker_color='#292929')
 
+        attend_list_no_nan = [i for i in list(all_attendance_df[student]) if not math.isnan(i)]
+
+        if attend_list_no_nan:
+            y_max1 = max(attend_list_no_nan)
+        else:
+            y_max1 = 0
+
         moving_avg = list(all_attendance_df[student].copy(deep=True).rolling(window=3, min_periods=1).mean())
         scatter_trace = go.Scatter(name="Avg", x=list(all_attendance_df.index), y=moving_avg, showlegend=False)
         
         fig2 = go.Figure(data=[bar_trace, scatter_trace])
-        fig2.update_layout(bargap=0.2, height=350, margin=dict(l=30, r=30, b=25, t=0))#, title="SDLFDLSFKJDSLKJDL")
+        center_attend_fig, y_max2 = create_center_attendance_graph(all_attendance_df)
 
-        updated_header = 'Attendance Over Time For ' + student.split(" ")[0]
+        if math.isnan(y_max1):
+            y_range = y_max2+0.5
+        else:
+            y_range = max(y_max1, y_max2)+1
+
+        fig2.update_layout(yaxis_range=[0, y_range], height=350, margin=dict(l=10, r=10, t=0))
+        center_attend_fig.update_layout(yaxis_range=[0, y_range], height=350, margin=dict(l=10, r=10, t=0))
+
+        updated_header = student.split(" ")[0] + "'s Attendance"
 
         # Update averages later
         #avg_mr = statistics.mean(list(low_attend_report['Mastery Rate']))
 
         #center_summary = pd.DataFrame({'Mastery Rate': [avg_mr]})
 
-        return fig2, None, updated_header, student, #fig3
+        return fig2, None, updated_header, student, center_attend_fig
 
     @callback(
         Output('initial-attend-graph', 'figure'),
@@ -1062,14 +1094,13 @@ def attend_process(attendance, sessions_left):
                 pack_attend_vals = []
                 for col, value in package.items():
                     if col in month_list:
-                        month=col
                         attend_count = string_check(value)
 # ----------------------------------------------------------------
                         # If there is only one attendance pack, we store directly store into list
                         if len(attend_packages)==1:                          
                             attend_vals.append(attend_count)
 
-                        # If multiple packs, we store as nested list and consolidate into one later.
+                        # If multiple packs, we store as nested list and consolidate into one list later.
                         else:
                             pack_attend_vals.append(attend_count)
         
@@ -1088,9 +1119,10 @@ def attend_process(attendance, sessions_left):
                 attend_vals = final_attend_vals
 
             # Do not include initial months that have zero attend.
-            # We will assume they were not active at that time, although we should check in the future.                
+            # We will assume they were not active at that time, although we should check exact date in the future.                
             attend_vals, attend_keys = truncate_zero_attend(attend_vals, attend_keys, student)
 # ----------------------------------------------------------------
+
             attend_dict[student] = dict(zip(attend_keys, attend_vals))
 
             # Exclude students with zero attendance in time range.
@@ -1099,8 +1131,6 @@ def attend_process(attendance, sessions_left):
                 attendance_col.append(0)
                 avg_attendance_col.append(0)
                 continue
-
-            #current_month_attendance = attend_dict[student][load_month]
 
             current_month_attendance = attend_dict[student].get(load_month, 0)
             attendance_col.append(current_month_attendance)
@@ -1115,16 +1145,12 @@ def attend_process(attendance, sessions_left):
 
             time_range = len(list(attend_dict[student].values())) - 1 + percent_current_month
 
-            
             total_sessions = sum(list(attend_dict[student].values()))
             revised_avg_attend = total_sessions/time_range
 
-
             avg_attendance_col.append(revised_avg_attend)
 
-    
     all_attendance_df = pd.DataFrame(attend_dict)
-
 
     # Calculate average excluding students with 0 attendance, they're considered inactive.
     center_attend_avg = sum(avg_attendance_col)/(len(avg_attendance_col) - avg_attendance_col.count(0))
@@ -1167,7 +1193,13 @@ def truncate_zero_attend(attend_list, month_list, student):
         if not attend_list: 
             break
     
+    #Truncate trailing zeros if they're inactive (>3 months no attendance)
 
+    # This isn't really that helpful right now
+    # if attend_list:
+    #     if sum(attend_list[-4:])==0:
+    #         attend_list = attend_list[0:-1]
+    #         month_list = month_list[0:-1]
 
     return attend_list, month_list
 
@@ -1184,8 +1216,6 @@ print("Unable to find data for the following students: ", inactive_students)
 app_layout(app, learn_plan_df, sessions_left, all_attendance_df, sessions_per_m, center_attend_avg)
 
 attendance_json = all_attendance_df.to_dict('index', into=OrderedDict)
-
-#pprint.pprint(attendance_json)
 
 # with open("attendance.json", "w") as f:
 #     json.dump(attendance_json, f)
