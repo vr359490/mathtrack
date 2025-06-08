@@ -328,8 +328,8 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
 
     center_sum_json = center_summary.to_dict('records')
 
-    # with open("center_averages.json", "w") as f:
-    #     json.dump(center_sum_json[0], f)
+    with open("center_averages.json", "w") as f:
+        json.dump(center_sum_json[0], f)
 
     # with open("generated_summaries.json", "r") as f:
     #     generated_summaries = json.load(f)
@@ -987,8 +987,8 @@ def pk_process_fig(student, pk_completion):
     pk_names = []
     worked_on_num = []
     
-    # with open("pk_completion.json", "w") as f:
-    #     json.dump(pk_completion, f)
+    with open("pk_completion.json", "w") as f:
+        json.dump(pk_completion, f)
 
     # process...
     for key, val in pk_completion[student].items():
@@ -1217,8 +1217,8 @@ app_layout(app, learn_plan_df, sessions_left, all_attendance_df, sessions_per_m,
 
 attendance_json = all_attendance_df.to_dict('index', into=OrderedDict)
 
-# with open("attendance.json", "w") as f:
-#     json.dump(attendance_json, f)
+with open("attendance.json", "w") as f:
+    json.dump(attendance_json, f)
 
 if __name__ == '__main__':
     app.run() 

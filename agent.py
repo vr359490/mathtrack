@@ -1,9 +1,11 @@
-
 from openai import OpenAI
 import pprint
 #import pandas as pd
 import json
 from collections import OrderedDict
+import boto3
+from datetime import datetime
+import os
 
 with open("pk_completion.json", "r") as f:
     pk_completion = json.load(f)
@@ -42,7 +44,7 @@ def nonfile_call(student, student_summary, student_pks, student_attend):
                                             PK completion data: {student_pks}. Recall that the Completed flag stands for 'Completed but not Mastered' and, as such, represents the number 
                                             of times the topic has been or will be repeated. A Mastered value of 1 means the student has mastered the topic, and a value of 0 means the student 
                                             is currently working on it and doesn't necessarily indicate weakness in that area. Do not mention Mastery percentage as this is not a helpful metric.
-                                            PK stands for prescriptive.
+                                            Refer to PKs as PKs only - do not refer to them as 'topics' or 'concepts' or anything else.
                                             Attendance data: {student_attend}."""}
         ]
     )
@@ -73,6 +75,7 @@ for summary in student_summaries:
 # count = 0
 
 for student in roster.keys():
+# for student in ['A.J. Kuehn']:
     # # count+=1
     # if student not in new_students:
     #     continue
@@ -122,57 +125,36 @@ with open("generated_summaries.json", "w") as f:
 
 # Upload to S3
 
-def assistant_call():
-    client = OpenAI()
+def upload_to_s3():
 
-    path = "/Users/victorruan/Desktop/Remaining sessions.docx"
+    AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
+    AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
+    
+    # Initialize S3 client
+    s3_client = boto3.client("s3",
+                      aws_access_key_id=AWS_ACCESS_KEY,
+                      aws_secret_access_key=AWS_SECRET_KEY,
+                      region_name="us-east-2")
+    
+    # Get current date for file naming
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    
+    # S3 bucket and file path
+    bucket_name = 'mathdashbucket'  # Replace with your actual bucket name
+    s3_file_path = f'student-summaries/{current_date}/generated_summaries.json'
+    
+    try:
+        # Upload the file
+        s3_client.upload_file(
+            'generated_summaries.json',
+            bucket_name,
+            s3_file_path
+        )
+        print(f"Successfully uploaded to s3://{bucket_name}/{s3_file_path}")
+    except Exception as e:
+        print(f"Error uploading to S3: {str(e)}")
 
-    paths = [path]
-    streams = [open(path, "rb") for path in paths]
+# Call the upload function
+upload_to_s3()
 
-    # Upload a file (e.g., PDF, DOCX, or TXT)
-    file = client.files.create(
-        file=open(path, "rb"),
-        purpose="assistants"
-    )
-    vector_store = client.vector_stores.create(name="sessions-left")
 
-    # Add the uploaded file to the vector store
-    client.vector_stores.file_batches.upload_and_poll(
-        vector_store_id=vector_store.id,
-        files = streams
-        #files=[file.id]
-    )
-    assistant = client.beta.assistants.create(
-        name="Business Analyst",
-        instructions="You are an experienced business intelligence analyst for a large mathematics tutoring center.",
-        model="gpt-4-turbo",
-        tools=[{"type": "file_search"}],
-    )
-
-    assistant = client.beta.assistants.update(
-    assistant_id=assistant.id,
-    tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}},
-    )
-
-    thread = client.beta.threads.create()
-
-    # Ask a question that requires looking into the file
-    client.beta.threads.messages.create(
-        thread_id=thread.id,
-        role="user",
-        content="What are some business insights that you have extracted from the given files?"
-    )
-    run = client.beta.threads.runs.create(
-        thread_id=thread.id,
-        assistant_id=assistant.id
-    )
-
-    # Poll for completion
-    while run.status != "completed":
-        run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
-
-    # Get the response
-    messages = client.beta.threads.messages.list(thread_id=thread.id)
-    for message in messages.data:
-        print(f"{message.role}: {message.content[0].text.value}")

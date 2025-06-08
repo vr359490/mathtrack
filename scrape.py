@@ -249,12 +249,23 @@ studentDropdown = wait.until(EC.presence_of_all_elements_located((By.ID, "studen
 showInactiveCheckBox = wait.until(EC.presence_of_all_elements_located((By.ID, "showinactive")))
 browser.execute_script("arguments[0].click();", showInactiveCheckBox[0])
 
-#sessions_left = sessions_left.head(3)
+# Find the index of 'Owen Schaefer'
+start_index = None
+for i, full_name in enumerate(sessions_left["Full Name"]):
+    if full_name == 'Owen Schaefer':
+        start_index = i
+        break
 
+if start_index is None:
+    print("Could not find 'Owen Schaefer' in the list")
+    exit()
+
+# Start from Owen Schaefer
+#for i in range(start_index, len(sessions_left)):
 for i in range(len(sessions_left)):
     
     full_name = sessions_left["Full Name"][i]
-    print('oky')
+    print(f'Processing: {full_name}')
 
     browser.execute_script("arguments[0].click();", studentDropdown[0])
 
