@@ -285,6 +285,93 @@ def create_center_attendance_graph(all_attendance_df):
     
     return fig, y_max
 
+def create_modal_filter_row(id_number):
+
+    filter_name = "filter-" + id_number
+    
+    filter_column_id = "filter-column-" + id_number
+    filter_sign_id = "filter-sign-" + id_number
+    filter_input_id = "filter-input-" + id_number
+    button_id = "button-" + id_number
+
+    if id_number=="0":
+        display = "block"
+    else: 
+        display = "none"
+
+    filter_row =  html.Div(
+                [html.Div([
+                dcc.Dropdown(
+                    id = filter_column_id,
+                    options = [{'label':'Average Attendance per Month', 'value':'Avg Attend/m'},
+                                {'label':'Learning Rate','value':'Learning Rate'},
+                                {'label':'Mastery Rate','value':'Mastery Rate'},
+                                {'label':'Remaining Sessions','value':'Remaining'}],
+                    placeholder = "Select a column...",
+                    value = None
+                                )   
+                ],style={'display':'inline-block','width':'46%', 'verticalAlign':'top'}),
+                html.Div(style={'display':'inline-block','width':'1%', 'verticalAlign':'top'}),
+                html.Div([
+                    dcc.Dropdown(
+                        id = filter_sign_id,
+                        options = [{'label':'equal to', 'value': '=='},
+                                    {'label':'greater than', 'value':'>'},
+                                    {'label':'less than', 'value':'<'},
+                                    {'label':'greater than or equal to', 'value':'>='},
+                                    {'label':'less than or equal to', 'value': '<='}],
+                        placeholder = "equal to")   
+                ],style={'display':'inline-block','width':'32%', 'verticalAlign':'top'}),
+                html.Div(style={'display':'inline-block','width':'1%', 'verticalAlign':'top'}),
+                html.Div([
+                    dbc.Input(
+                        id=filter_input_id,
+                        type = "number",
+                        style={"height":36},
+                        placeholder="")   
+                ],style={'display':'inline-block','width':'17%', 'verticalAlign':'top'}),
+                html.Div([
+                    html.Div(style={'height':'4px'}),
+                    html.Div([dbc.Button("❌", color="light", id = button_id, n_clicks=0)])   
+                ],style={'display':'inline-block','width':'3%', 'verticalAlign':'top'}),
+                html.Div(style={'display':'block','height':'9px'}),],
+
+                style={"display":display},
+                id = filter_name)
+    return filter_row
+
+filter_row_0 = create_modal_filter_row("0")
+filter_row_1 = create_modal_filter_row("1")
+filter_row_2 = create_modal_filter_row("2")
+filter_row_3 = create_modal_filter_row("3")
+
+def query_report(query_list, low_attend_report):
+    # Every query should have exactly three parts. If less, we can't and don't process.
+    for query in query_list:
+        col = query[0]
+        sign = query[1]
+        val = str(query[2])
+
+        data = []
+
+        for data_point in low_attend_report[col]:
+
+            if type(data_point)==str:
+                data_point = string_check(data_point)
+            elif math.isnan(data_point):
+                data_point = None
+
+            data.append(data_point)
+
+        data = pd.DataFrame(data, columns=['useless name'])
+
+        code = "low_attend_report[data['useless name']" + sign + val + "]"
+
+        low_attend_report = eval(code)
+        low_attend_report = low_attend_report.reset_index(drop=True)
+
+    return low_attend_report.to_dict('records')
+
 def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m, center_attend_avg):
 
     student_roster = sessions_left['Full Name']
@@ -344,93 +431,6 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
     learning_plans = list(process_df[first_student]['Learning Plan Name'].unique())
 
     most_recent_lp = find_recent_lp(process_df, first_student)
-
-    def create_modal_filter_row(id_number):
-
-        filter_name = "filter-" + id_number
-        
-        filter_column_id = "filter-column-" + id_number
-        filter_sign_id = "filter-sign-" + id_number
-        filter_input_id = "filter-input-" + id_number
-        button_id = "button-" + id_number
-
-        if id_number=="0":
-            display = "block"
-        else: 
-            display = "none"
-
-        filter_row =  html.Div(
-                    [html.Div([
-                    dcc.Dropdown(
-                        id = filter_column_id,
-                        options = [{'label':'Average Attendance per Month', 'value':'Avg Attend/m'},
-                                    {'label':'Learning Rate','value':'Learning Rate'},
-                                    {'label':'Mastery Rate','value':'Mastery Rate'},
-                                    {'label':'Remaining Sessions','value':'Remaining'}],
-                        placeholder = "Select a column...",
-                        value = None
-                                    )   
-                    ],style={'display':'inline-block','width':'46%', 'verticalAlign':'top'}),
-                    html.Div(style={'display':'inline-block','width':'1%', 'verticalAlign':'top'}),
-                    html.Div([
-                        dcc.Dropdown(
-                            id = filter_sign_id,
-                            options = [{'label':'equal to', 'value': '=='},
-                                       {'label':'greater than', 'value':'>'},
-                                       {'label':'less than', 'value':'<'},
-                                       {'label':'greater than or equal to', 'value':'>='},
-                                       {'label':'less than or equal to', 'value': '<='}],
-                            placeholder = "equal to")   
-                    ],style={'display':'inline-block','width':'32%', 'verticalAlign':'top'}),
-                    html.Div(style={'display':'inline-block','width':'1%', 'verticalAlign':'top'}),
-                    html.Div([
-                        dbc.Input(
-                            id=filter_input_id,
-                            type = "number",
-                            style={"height":36},
-                            placeholder="")   
-                    ],style={'display':'inline-block','width':'17%', 'verticalAlign':'top'}),
-                    html.Div([
-                        html.Div(style={'height':'4px'}),
-                        html.Div([dbc.Button("❌", color="light", id = button_id, n_clicks=0)])   
-                    ],style={'display':'inline-block','width':'3%', 'verticalAlign':'top'}),
-                    html.Div(style={'display':'block','height':'9px'}),],
-
-                    style={"display":display},
-                    id = filter_name)
-        return filter_row
-    
-    filter_row_0 = create_modal_filter_row("0")
-    filter_row_1 = create_modal_filter_row("1")
-    filter_row_2 = create_modal_filter_row("2")
-    filter_row_3 = create_modal_filter_row("3")
-
-    def query_report(query_list, low_attend_report):
-        # Every query should have exactly three parts. If less, we can't and don't process.
-        for query in query_list:
-            col = query[0]
-            sign = query[1]
-            val = str(query[2])
-
-            data = []
-
-            for data_point in low_attend_report[col]:
-
-                if type(data_point)==str:
-                    data_point = string_check(data_point)
-                elif math.isnan(data_point):
-                    data_point = None
-
-                data.append(data_point)
-
-            data = pd.DataFrame(data, columns=['useless name'])
-
-            code = "low_attend_report[data['useless name']" + sign + val + "]"
-
-            low_attend_report = eval(code)
-            low_attend_report = low_attend_report.reset_index(drop=True)
-
-        return low_attend_report.to_dict('records')
 
     # Initialize main page layout
     main_view = html.Div([
@@ -1192,14 +1192,6 @@ def truncate_zero_attend(attend_list, month_list, student):
 
         if not attend_list: 
             break
-    
-    #Truncate trailing zeros if they're inactive (>3 months no attendance)
-
-    # This isn't really that helpful right now
-    # if attend_list:
-    #     if sum(attend_list[-4:])==0:
-    #         attend_list = attend_list[0:-1]
-    #         month_list = month_list[0:-1]
 
     return attend_list, month_list
 
