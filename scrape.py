@@ -13,6 +13,13 @@ import time
 import warnings
 warnings.filterwarnings('ignore')
 
+import requests
+
+def deploy():
+    deploy_hook_url = "https://api.render.com/deploy/srv-d02knrbe5dus73btej50?key=qbZbmE7kcQ0"
+    response = requests.post(deploy_hook_url)
+    print(response.status_code)
+
 bucket = "mathdashbucket"
 
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
@@ -31,7 +38,7 @@ def up(s3, file_path, save_as):
 def get_browser(url):
     options = webdriver.ChromeOptions()
 
-    #options.add_argument("--headless")
+    options.add_argument("--headless")
     options.add_experimental_option("prefs", {'profile.default_content_setting_values.automatic_downloads': 1})
     options.add_argument('--disable-dev-shm-usage')
     browser = webdriver.Chrome(options=options)
@@ -54,44 +61,6 @@ def login(browser, wait):
 
     login_field = wait.until(EC.presence_of_all_elements_located((By.ID, "login")))
     browser.execute_script("arguments[0].click();", login_field[0])
-
-# def export_excel(wait):
-    
-#     # List current files in Downloads
-#     download_path = "/Users/victorruan/Downloads"
-
-#     pre = os.listdir(download_path)
-    
-#     export = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//button[contains(text(), 'Excel')]")))
-
-#     if len(export)>1:
-#         export = export[1]
-#     else:
-#         export = export[0]
-
-#     browser.execute_script("arguments[0].click();", export)
-#     #export.click()
-
-#     post = os.listdir(download_path)
-
-#     # Check download files before and after hitting export to check completed downloaded
-#     while len(pre)==len(post):
-#         time.sleep(1)
-#         post = os.listdir(download_path)
-
-#     new_files = set(post) - set(pre)
-
-#     # If there's a new file, pop it from the set
-#     filename = new_files.pop() if new_files else None
-
-#     if filename is None:
-#         raise FileNotFoundError("No new file was downloaded.")
-
-#     path = os.path.join(download_path, filename)
-
-#     data = pd.read_excel(path)
-
-#     return data, path
 
 def export_excel(wait):
     download_path = "/Users/victorruan/Downloads"
@@ -169,6 +138,8 @@ sessions_left['Full Name'] = sessions_left['First Name'].astype(str) + " " + ses
 # print(sessions_left.columns)
 up(s3, path, "sessions_left.csv")
 
+print("Student roster scraped.")
+
 # ------------------------------------------------------------------------------------------------
 
 # 2. Scrape attendance
@@ -205,6 +176,8 @@ _, file_beta, _ = export_excel(wait)
 
 up(s3, file_beta, "Attendance_(All).xlsx")
 
+print("Attendance scraped.")
+
 # ------------------------------------------------------------------------------------------------
 
 # 3. Scrape DWP
@@ -232,6 +205,8 @@ dwp_search_btn.click()
 _, file_zeta, _ = export_excel(wait)
 
 up(s3, file_zeta, "DWP_Report_(All).xlsx")
+
+print("Digital workout plans scraped.")
 
 # ------------------------------------------------------------------------------------------------
 
@@ -294,3 +269,7 @@ for i in range(len(sessions_left)):
         name = filename.split(" ")[0] + " " + filename.split(" ")[1] + ".xlsx"
         print(name)
         s3.upload_fileobj(f, bucket, "learning_plans/"+name)
+
+print("Learning plans scraped.")
+
+deploy()
