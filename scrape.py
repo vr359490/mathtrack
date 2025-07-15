@@ -38,7 +38,7 @@ def up(s3, file_path, save_as):
 def get_browser(url):
     options = webdriver.ChromeOptions()
 
-    options.add_argument("--headless")
+    # options.add_argument("--headless")
     options.add_experimental_option("prefs", {'profile.default_content_setting_values.automatic_downloads': 1})
     options.add_argument('--disable-dev-shm-usage')
     browser = webdriver.Chrome(options=options)
@@ -225,15 +225,15 @@ showInactiveCheckBox = wait.until(EC.presence_of_all_elements_located((By.ID, "s
 browser.execute_script("arguments[0].click();", showInactiveCheckBox[0])
 
 # Find the index of 'Owen Schaefer'
-start_index = None
-for i, full_name in enumerate(sessions_left["Full Name"]):
-    if full_name == 'Owen Schaefer':
-        start_index = i
-        break
+# start_index = None
+# for i, full_name in enumerate(sessions_left["Full Name"]):
+#     if full_name == 'Owen Schaefer':
+#         start_index = i
+#         break
 
-if start_index is None:
-    print("Could not find 'Owen Schaefer' in the list")
-    exit()
+# if start_index is None:
+#     print("Could not find 'Owen Schaefer' in the list")
+#     exit()
 
 # Start from Owen Schaefer
 #for i in range(start_index, len(sessions_left)):
