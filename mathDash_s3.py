@@ -441,7 +441,7 @@ def app_layout(app, process_df,sessions_left, all_attendance_df, sessions_per_m,
         html.Div(style={'height':'9px'}),
 
         # html.H6(["Data Summary ✨"],style={'marginBottom':-1}),
-        html.Div(["Data was last updated on: 12:34:56 7/8/99"],style={'fontSize':11}),
+        html.Div(["Data was last updated on: ", datetime.datetime.now().strftime("%I:%M %p %Y-%m-%d")],style={'fontSize':11}),
         html.Div(style={'height':'4px'}),
         html.Div(style={'display':'inline-block','width':'1.5%', 'verticalAlign':'top'}),
         # html.Div([
