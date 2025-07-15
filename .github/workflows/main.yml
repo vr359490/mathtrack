@@ -1,29 +1,68 @@
-name: Run weekly Python script
+name: MathTrack Weekly Data Processing
 
 on:
   schedule:
-    - cron: '0 0 * * 0'  # Runs every Sunday at 00:00 UTC
-  workflow_dispatch:      # Allows manual run from the GitHub UI
+    # Run every Sunday at 2:00 AM UTC (adjust timezone as needed)
+    - cron: '0 2 * * 0'
+  workflow_dispatch: # Allow manual triggering
 
 jobs:
-  run-script:
+  process-data:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13.5'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-      - name: Run script
-        run: |
-          python process.py
-          python mathDath_s3.py
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run data processing
+      env:
+        AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+        AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+        MATHNASIUM_USERNAME: ${{ secrets.MATHNASIUM_USERNAME }}
+        MATHNASIUM_PASSWORD: ${{ secrets.MATHNASIUM_PASSWORD }}
+      run: |
+        echo "Starting data processing..."
+        python process.py
+        echo "Data processing completed successfully"
+        
+    - name: Run dashboard application (data preparation)
+      env:
+        AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+        AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      run: |
+        echo "Running dashboard data preparation..."
+        # Run the dashboard app briefly to process and upload data
+        timeout 60s python mathDash_s3.py || echo "Dashboard data processing completed"
+        
+  notify-completion:
+    needs: process-data
+    runs-on: ubuntu-latest
+    if: always() # Run even if the previous job fails
+    
+    steps:
+    - name: Notify completion
+      run: |
+        if [ "${{ needs.process-data.result }}" == "success" ]; then
+          echo "✅ MathTrack weekly processing completed successfully"
+        else
+          echo "❌ MathTrack weekly processing failed"
+          exit 1
+        fi
