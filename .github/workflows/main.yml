@@ -32,25 +32,25 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Run data processing
+    - name: Scrape fresh data from Mathnasium
       env:
         AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
         AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
         MATHNASIUM_USERNAME: ${{ secrets.MATHNASIUM_USERNAME }}
         MATHNASIUM_PASSWORD: ${{ secrets.MATHNASIUM_PASSWORD }}
       run: |
-        echo "Starting data processing..."
-        python process.py
-        echo "Data processing completed successfully"
+        echo "Scraping fresh data from Mathnasium Radius..."
+        python scrape.py
+        echo "Data scraping completed successfully"
         
-    - name: Run dashboard application (data preparation)
+    - name: Process data and prepare dashboard
       env:
         AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
         AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
       run: |
-        echo "Running dashboard data preparation..."
-        # Run the dashboard app briefly to process and upload data
-        timeout 60s python mathDash_s3.py || echo "Dashboard data processing completed"
+        echo "Processing scraped data..."
+        timeout 60s python mathDash_s3.py || echo "Data processing completed"
+        echo "Dashboard preparation completed successfully"
         
   notify-completion:
     needs: process-data
@@ -62,7 +62,9 @@ jobs:
       run: |
         if [ "${{ needs.process-data.result }}" == "success" ]; then
           echo "✅ MathTrack weekly processing completed successfully"
+          echo "Fresh data has been scraped and processed"
         else
           echo "❌ MathTrack weekly processing failed"
+          echo "Check the logs for details"
           exit 1
         fi
