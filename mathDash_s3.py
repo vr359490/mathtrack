@@ -16,6 +16,7 @@ import calendar
 import datetime
 from datetime import timedelta
 import warnings
+from scrape import deploy
 
 import boto3
 
@@ -982,6 +983,8 @@ attendance_json = all_attendance_df.to_dict('index', into=OrderedDict)
 
 with open("attendance.json", "w") as f:
     json.dump(attendance_json, f)
+
+deploy()
 
 if __name__ == '__main__':
     app.run() 
