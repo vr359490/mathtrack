@@ -39,9 +39,7 @@ jobs:
         AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
         MATHNASIUM_USERNAME: ${{ secrets.MATHNASIUM_USERNAME }}
         MATHNASIUM_PASSWORD: ${{ secrets.MATHNASIUM_PASSWORD }}
-      run: |
-        # Check if scrape_ci.py exists, otherwise use scrape.py
-        python scrape.py
+      run: python scrape.py
     
     - name: Run dashboard and process data
       env:
