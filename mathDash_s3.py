@@ -16,11 +16,18 @@ import calendar
 import datetime
 from datetime import timedelta
 import warnings
-from scrape import deploy
+# from scrape import deploy
 
 import boto3
 
 import process
+
+import requests
+
+def deploy():
+    deploy_hook_url = "https://api.render.com/deploy/srv-d02knrbe5dus73btej50?key=qbZbmE7kcQ0"
+    response = requests.post(deploy_hook_url)
+    print(response.status_code)
 
 bucket = "mathdashbucket"
 
