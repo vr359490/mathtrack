@@ -185,46 +185,93 @@ try:
     up(s3, file_zeta, "DWP_Report_(All).xlsx")
     print("Digital workout plans scraped.")
 
-    # 4. Scrape Learning Plans
+    # LEARNING PLANS SCRAPE
     inactive_students = []
-    all_student_LP = {}
-
     url = 'https://radius.mathnasium.com/LearningPlan'
     browser.get(url)
-
     studentDropdown = wait.until(EC.presence_of_all_elements_located((By.ID, "studentDropDownList")))
     showInactiveCheckBox = wait.until(EC.presence_of_all_elements_located((By.ID, "showinactive")))
     browser.execute_script("arguments[0].click();", showInactiveCheckBox[0])
+    time.sleep(2)
 
-    # Process first 5 students for testing in CI
     for i in range(min(5, len(sessions_left))):
-        full_name = sessions_left["Full Name"][i]
+        full_name = sessions_left["Full Name"].iloc[i]
         print(f'Processing: {full_name}')
-
         browser.execute_script("arguments[0].click();", studentDropdown[0])
-        string_match = "//*[contains(text(), " + "'" + full_name + "'" + ")]"
+        time.sleep(2)
+        # DEBUG: Print available options
+        dropdown_options = browser.find_elements(By.XPATH, "//ul[@id='studentDropDownList_listbox']/li")
+        print("Available dropdown options:")
+        for opt in dropdown_options:
+            print(opt.text)
+        print(f"Looking for: {full_name}")
+        string_match = f"//ul[@id='studentDropDownList_listbox']/li[contains(text(), '{full_name}')]"
 
         try:
-            student_dropdown_item = wait.until(EC.element_to_be_clickable((By.XPATH, string_match)))
+            student_dropdown_item = WebDriverWait(browser, 30).until(EC.element_to_be_clickable((By.XPATH, string_match)))
+            browser.execute_script("arguments[0].scrollIntoView(true);", student_dropdown_item)
+            time.sleep(1)
             browser.execute_script("arguments[0].click();", student_dropdown_item)
         except TimeoutException:
-            print(f"Element not clickable for {full_name}")
+            browser.save_screenshot(f"{full_name}_timeout.png")
+            print(f"Timeout, screenshot saved for {full_name}")
             inactive_students.append(full_name)
             continue
-        
-        lp, file_eta, filename = export_excel(wait, download_path)
-
-        if len(filename.split(" "))<2:
-            print(f'Anomalous file: {filename}')
+        try:
+            lp, file_eta, filename = export_excel(wait, download_path)
+            if len(filename.split(" ")) < 2:
+                print(f'Anomalous file: {filename}')
+                continue
+            with open(file_eta, "rb") as f:
+                name = filename.split(" ")[0] + " " + filename.split(" ")[1] + ".xlsx"
+                print(f'Uploading: {name}')
+                s3.upload_fileobj(f, bucket, "learning_plans/" + name)
+        except Exception as e:
+            print(f"Failed exporting for {full_name}: {e}")
             continue
-
-        with open(file_eta, "rb") as f:
-            name = filename.split(" ")[0] + " " + filename.split(" ")[1] + ".xlsx"
-            print(f'Uploading: {name}')
-            s3.upload_fileobj(f, bucket, "learning_plans/"+name)
-
     print("Learning plans scraped.")
     print(f"Inactive students: {inactive_students}")
+
+    # # 4. Scrape Learning Plans
+    # inactive_students = []
+    # all_student_LP = {}
+
+    # url = 'https://radius.mathnasium.com/LearningPlan'
+    # browser.get(url)
+
+    # studentDropdown = wait.until(EC.presence_of_all_elements_located((By.ID, "studentDropDownList")))
+    # showInactiveCheckBox = wait.until(EC.presence_of_all_elements_located((By.ID, "showinactive")))
+    # browser.execute_script("arguments[0].click();", showInactiveCheckBox[0])
+
+    # # Process first 5 students for testing in CI
+    # for i in range(min(5, len(sessions_left))):
+    #     full_name = sessions_left["Full Name"][i]
+    #     print(f'Processing: {full_name}')
+
+    #     browser.execute_script("arguments[0].click();", studentDropdown[0])
+    #     string_match = "//*[contains(text(), " + "'" + full_name + "'" + ")]"
+
+    #     try:
+    #         student_dropdown_item = wait.until(EC.element_to_be_clickable((By.XPATH, string_match)))
+    #         browser.execute_script("arguments[0].click();", student_dropdown_item)
+    #     except TimeoutException:
+    #         print(f"Element not clickable for {full_name}")
+    #         inactive_students.append(full_name)
+    #         continue
+        
+    #     lp, file_eta, filename = export_excel(wait, download_path)
+
+    #     if len(filename.split(" "))<2:
+    #         print(f'Anomalous file: {filename}')
+    #         continue
+
+    #     with open(file_eta, "rb") as f:
+    #         name = filename.split(" ")[0] + " " + filename.split(" ")[1] + ".xlsx"
+    #         print(f'Uploading: {name}')
+    #         s3.upload_fileobj(f, bucket, "learning_plans/"+name)
+
+    # print("Learning plans scraped.")
+    # print(f"Inactive students: {inactive_students}")
 
     # deploy()
 
