@@ -1,70 +1,50 @@
-name: MathTrack Weekly Data Processing
+name: Scrape Mathnasium Data
 
 on:
   schedule:
-    # Run every Sunday at 2:00 AM UTC (adjust timezone as needed)
-    - cron: '0 2 * * 0'
-  workflow_dispatch: # Allow manual triggering
+    # Run daily at 8 AM UTC (adjust timezone as needed)
+    - cron: '0 8 * * *'
+  workflow_dispatch:  # Allow manual triggering
 
 jobs:
-  process-data:
+  scrape:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v4
-      
+    
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
-        
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
+    
+    - name: Install Chrome
+      uses: browser-actions/setup-chrome@latest
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-          
-    - name: Install dependencies
+        chrome-version: stable
+    
+    - name: Install ChromeDriver
+      uses: nanasess/setup-chromedriver@master
+    
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        
-    - name: Scrape fresh data from Mathnasium
+    
+    - name: Run scraper
       env:
         AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
         AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
         MATHNASIUM_USERNAME: ${{ secrets.MATHNASIUM_USERNAME }}
         MATHNASIUM_PASSWORD: ${{ secrets.MATHNASIUM_PASSWORD }}
-      run: |
-        echo "Scraping fresh data from Mathnasium Radius..."
-        python scrape.py
-        echo "Data scraping completed successfully"
-        
-    - name: Process data and prepare dashboard
-      env:
-        AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
-        AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
-      run: |
-        echo "Processing scraped data..."
-        timeout 60s python mathDash_s3.py || echo "Data processing completed"
-        echo "Dashboard preparation completed successfully"
-        
-  notify-completion:
-    needs: process-data
-    runs-on: ubuntu-latest
-    if: always() # Run even if the previous job fails
+      run: python scrape.py
     
-    steps:
-    - name: Notify completion
-      run: |
-        if [ "${{ needs.process-data.result }}" == "success" ]; then
-          echo "✅ MathTrack weekly processing completed successfully"
-          echo "Fresh data has been scraped and processed"
-        else
-          echo "❌ MathTrack weekly processing failed"
-          echo "Check the logs for details"
-          exit 1
-        fi
+    - name: Upload logs (optional)
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: scraping-logs
+        path: |
+          *.log
+          *.txt
