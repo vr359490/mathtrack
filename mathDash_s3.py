@@ -986,5 +986,9 @@ with open("attendance.json", "w") as f:
 
 deploy()
 
+# if __name__ == '__main__':
+#     app.run() 
+
 if __name__ == '__main__':
-    app.run() 
+    if not os.getenv('DASH_NO_SERVER'):
+        app.run()
