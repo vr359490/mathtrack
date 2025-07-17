@@ -82,7 +82,7 @@ def export_excel(wait, download_path):
     browser.execute_script("arguments[0].click();", export)
 
     # Wait for new file to appear
-    timeout = 60  # Reduced timeout for CI
+    timeout = 180  # Reduced timeout for CI
     start_time = time.time()
     while True:
         post = set(os.listdir(download_path))
