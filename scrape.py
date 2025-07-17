@@ -196,7 +196,8 @@ try:
     browser.execute_script("arguments[0].click();", showInactiveCheckBox[0])
     time.sleep(2)
 
-    for i in range(min(5, len(sessions_left))):
+    # for i in range(min(5, len(sessions_left))):
+    for i in range(len(sessions_left)):
         full_name = sessions_left["Full Name"].iloc[i]
         print(f'Processing: {full_name}')
         browser.execute_script("arguments[0].click();", studentDropdown[0])
