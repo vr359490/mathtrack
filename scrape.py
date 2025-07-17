@@ -200,10 +200,10 @@ try:
         browser.execute_script("arguments[0].click();", studentDropdown[0])
         time.sleep(2)
         # DEBUG: Print available options
-        dropdown_options = browser.find_elements(By.XPATH, "//ul[@id='studentDropDownList_listbox']/li")
-        print("Available dropdown options:")
-        for opt in dropdown_options:
-            print(opt.text)
+        # dropdown_options = browser.find_elements(By.XPATH, "//ul[@id='studentDropDownList_listbox']/li")
+        # print("Available dropdown options:")
+        # for opt in dropdown_options:
+        #     print(opt.text)
         print(f"Looking for: {full_name}")
         string_match = f"//ul[@id='studentDropDownList_listbox']/li[contains(text(), '{full_name}')]"
 
