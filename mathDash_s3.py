@@ -991,7 +991,7 @@ attendance_json = all_attendance_df.to_dict('index', into=OrderedDict)
 with open("attendance.json", "w") as f:
     json.dump(attendance_json, f)
 
-deploy()
+# deploy()
 
 # if __name__ == '__main__':
 #     app.run() 
