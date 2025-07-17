@@ -56,6 +56,10 @@ def get_browser(url):
         "safebrowsing.enabled": True
     }
     options.add_experimental_option("prefs", prefs)
+
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--disable-features=VizDisplayCompositor")
+
     
     browser = webdriver.Chrome(options=options)
     browser.get(url)
