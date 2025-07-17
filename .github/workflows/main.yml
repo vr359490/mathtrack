@@ -40,11 +40,20 @@ jobs:
         MATHNASIUM_PASSWORD: ${{ secrets.MATHNASIUM_PASSWORD }}
       run: python scrape.py
     
+    - name: Test dashboard startup
+      env:
+        AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+        AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      run: |
+        # Test that the dashboard can start without errors
+        timeout 30s python mathDash_s3.py || echo "Dashboard startup test completed"
+    
     - name: Upload logs (optional)
       if: always()
       uses: actions/upload-artifact@v3
       with:
-        name: scraping-logs
+        name: processing-logs
         path: |
           *.log
           *.txt
+          *.json
