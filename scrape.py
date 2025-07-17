@@ -11,12 +11,12 @@ import boto3
 import os
 import time
 import warnings
+import tempfile
 warnings.filterwarnings('ignore')
 
 import requests
 
 def deploy():
-    print("Deploying...")
     deploy_hook_url = "https://api.render.com/deploy/srv-d02knrbe5dus73btej50?key=qbZbmE7kcQ0"
     response = requests.post(deploy_hook_url)
     print(response.status_code)
@@ -32,38 +32,34 @@ s3 = boto3.client("s3",
                       region_name="us-east-2")
 
 def up(s3, file_path, save_as):
-
     with open(file_path, "rb") as f:
         s3.upload_fileobj(f, bucket, save_as)
 
-def get_browser(url):
+def get_browser(url, download_dir):
     options = webdriver.ChromeOptions()
-
+    
     options.add_argument("--headless")
-    options.add_experimental_option("prefs", {'profile.default_content_setting_values.automatic_downloads': 1})
     options.add_argument('--disable-dev-shm-usage')
-
-    # Add these for GitHub Actions compatibility
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-web-security")
-    options.add_argument("--allow-running-insecure-content")
-    options.add_argument("--disable-background-timer-throttling")
-    options.add_argument("--disable-backgrounding-occluded-windows")
-    options.add_argument("--disable-renderer-backgrounding")
-    options.add_argument("--disable-features=TranslateUI")
-    options.add_argument("--remote-debugging-port=9222")
-
+    options.add_argument('--no-sandbox')  # Important for GitHub Actions
+    options.add_argument('--disable-gpu')  # Also helpful for headless
+    
+    # Set download directory
+    prefs = {
+        'profile.default_content_settings.popups': 0,
+        'download.default_directory': download_dir,
+        'download.prompt_for_download': False,
+        'download.directory_upgrade': True,
+        'safebrowsing.enabled': True,
+        'profile.default_content_setting_values.automatic_downloads': 1
+    }
+    options.add_experimental_option('prefs', prefs)
     
     browser = webdriver.Chrome(options=options)
     browser.get(url)
     return browser
 
 def login(browser, wait):
-
     # Load credentials securely
-    # load_dotenv()
     USERNAME = os.getenv("MATHNASIUM_USERNAME")
     PASSWORD = os.getenv("MATHNASIUM_PASSWORD")
 
@@ -77,8 +73,7 @@ def login(browser, wait):
     login_field = wait.until(EC.presence_of_all_elements_located((By.ID, "login")))
     browser.execute_script("arguments[0].click();", login_field[0])
 
-def export_excel(wait):
-    download_path = "/Users/victorruan/Downloads"
+def export_excel(wait, download_path):
     pre = set(os.listdir(download_path))
 
     # Click the Excel export button
@@ -105,186 +100,173 @@ def export_excel(wait):
 
     return data, path, filename
 
-# We will scrape the website then upload to s3.
+def main():
+    # Create temporary directory for downloads
+    with tempfile.TemporaryDirectory() as temp_dir:
+        print(f"Using temporary directory: {temp_dir}")
+        
+        # ------------------------------------------------------------------------------------------------
+        # 1. Scrape sessions_left/student roster first
 
-# There are four pages to scrape:
-# - Student Attendance
-# - Digital Workout Plan
-# - Sessions Left (which happens to contain also Student Roster)
-# - Finally, individual Learning Plans (this will take the longest to download all )
+        url = "https://radius.mathnasium.com/Attendance/Roster"
+        browser = get_browser(url, temp_dir)
 
-# ------------------------------------------------------------------------------------------------
+        wait = WebDriverWait(browser, 10)
 
-# 1. Scrape sessions_left/student roster first
+        # Grab credentials and login
+        login(browser, wait)
 
-url = "https://radius.mathnasium.com/Attendance/Roster"
-browser = get_browser(url)
+        centerDropdown = wait.until(EC.presence_of_element_located((By.XPATH, "//div[@class='theGCSMulti']//input[@class='k-input k-readonly']")))
 
-wait = WebDriverWait(browser, 10)
+        time.sleep(2)
 
-# Grab credentials and login
-login(browser, wait)
+        centerDropdown.send_keys('v') # 'v' for Verona
 
-centerDropdown = wait.until(EC.presence_of_element_located((By.XPATH, "//div[@class='theGCSMulti']//input[@class='k-input k-readonly']")))
+        time.sleep(5)
+        centerDropdown.send_keys(Keys.ENTER)
 
-time.sleep(2)
+        time.sleep(3)
+        table = wait.until(EC.presence_of_all_elements_located((By.ID, "gridRoster")))
+        roster = table[0].get_attribute('outerHTML')
 
-centerDropdown.send_keys('v') # 'v' for Verona
+        roster_df = pd.read_html(StringIO(roster))[0]
 
-time.sleep(5)
-centerDropdown.send_keys(Keys.ENTER)
+        sessions_left = roster_df[['First Name', 'Last Name','Membership Type', 'Remaining']]
 
-time.sleep(3)
-table = wait.until(EC.presence_of_all_elements_located((By.ID, "gridRoster")))
-roster = table[0].get_attribute('outerHTML')
+        path = os.path.join(temp_dir, "sessions_left.csv")
 
-roster_df = pd.read_html(StringIO(roster))[0]
+        sessions_left.to_csv(path, index=False)
 
-sessions_left = roster_df[['First Name', 'Last Name','Membership Type', 'Remaining']]
+        sessions_left['Full Name'] = sessions_left['First Name'].astype(str) + " " + sessions_left['Last Name'].astype(str)
+        up(s3, path, "sessions_left.csv")
 
-download_path = "/Users/victorruan/Downloads"
+        print("Student roster scraped.")
 
-path = os.path.join(download_path, "sessions_left.csv")
+        # ------------------------------------------------------------------------------------------------
+        # 2. Scrape attendance
 
-sessions_left.to_csv(path, index=False)
+        url= "https://radius.mathnasium.com/StudentAttendanceMonthlyReport"
+        browser.get(url)
 
-sessions_left['Full Name'] = sessions_left['First Name'].astype(str) + " " + sessions_left['Last Name'].astype(str)
-# print(sessions_left)
-# print(sessions_left.columns)
-up(s3, path, "sessions_left.csv")
+        switch = wait.until(EC.element_to_be_clickable((By.XPATH, "//div[@class='switch-field col-md-4']")))
+        switch.click()
 
-print("Student roster scraped.")
+        reportStart = wait.until(EC.element_to_be_clickable((By.ID, "ReportMonthlyStart")))
+        reportStart.clear()
+        time.sleep(1)
 
-# ------------------------------------------------------------------------------------------------
+        date_string = "09/01/2024"
 
-# 2. Scrape attendance
+        for char in date_string:
+            reportStart.send_keys(char)
+            time.sleep(0.1)
 
-url= "https://radius.mathnasium.com/StudentAttendanceMonthlyReport"
-browser.get(url)
+        time.sleep(0.5)
 
-switch = wait.until(EC.element_to_be_clickable((By.XPATH, "//div[@class='switch-field col-md-4']")))
-switch.click()
+        search_btn = browser.find_element(By.XPATH, "//button[@onclick='GetMonthlyData()']")
 
-reportStart = wait.until(EC.element_to_be_clickable((By.ID, "ReportMonthlyStart")))
-reportStart.clear()
-time.sleep(1)
+        time.sleep(0.5)
 
-date_string = "09/01/2024"
+        search_btn.click()
 
-for char in date_string:
-    reportStart.send_keys(char)
-    time.sleep(0.1)
+        time.sleep(1)
 
-time.sleep(0.5)
+        _, file_beta, _ = export_excel(wait, temp_dir)
 
-search_btn = browser.find_element(By.XPATH, "//button[@onclick='GetMonthlyData()']")
+        up(s3, file_beta, "Attendance_(All).xlsx")
 
-time.sleep(0.5)
+        print("Attendance scraped.")
 
-search_btn.click()
+        # ------------------------------------------------------------------------------------------------
+        # 3. Scrape DWP
 
-time.sleep(1)
+        url = "https://radius.mathnasium.com/DigitalWorkoutPlan/Report"
+        browser.get(url)
 
-download_path = "/Users/victorruan/Downloads"
+        time.sleep(0.5)
 
-_, file_beta, _ = export_excel(wait)
+        dwpFromDate = wait.until(EC.element_to_be_clickable((By.ID, "dwpFromDate")))
+        dwpFromDate.clear()
 
-up(s3, file_beta, "Attendance_(All).xlsx")
+        time.sleep(1)
 
-print("Attendance scraped.")
+        # Date when we transitioned to digital workout plan
+        date_string = "09/01/2024"
 
-# ------------------------------------------------------------------------------------------------
+        for char in date_string:
+            dwpFromDate.send_keys(char)
+            time.sleep(0.1)
 
-# 3. Scrape DWP
+        dwp_search_btn = wait.until(EC.element_to_be_clickable((By.ID, "btnsearch")))
+        dwp_search_btn.click()
 
-url = "https://radius.mathnasium.com/DigitalWorkoutPlan/Report"
-browser.get(url)
+        _, file_zeta, _ = export_excel(wait, temp_dir)
 
-time.sleep(0.5)
+        up(s3, file_zeta, "DWP_Report_(All).xlsx")
 
-dwpFromDate = wait.until(EC.element_to_be_clickable((By.ID, "dwpFromDate")))
-dwpFromDate.clear()
+        print("Digital workout plans scraped.")
 
-time.sleep(1)
+        # ------------------------------------------------------------------------------------------------
+        # 4. Scrape Learning Plans
 
-# Date when we transitioned to digital workout plan
-date_string = "09/01/2024"
+        inactive_students = []
 
-for char in date_string:
-    dwpFromDate.send_keys(char)
-    time.sleep(0.1)
+        url = 'https://radius.mathnasium.com/LearningPlan'
+        browser.get(url)
 
-dwp_search_btn = wait.until(EC.element_to_be_clickable((By.ID, "btnsearch")))
-dwp_search_btn.click()
+        studentDropdown = wait.until(EC.presence_of_all_elements_located((By.ID, "studentDropDownList")))
 
-_, file_zeta, _ = export_excel(wait)
+        showInactiveCheckBox = wait.until(EC.presence_of_all_elements_located((By.ID, "showinactive")))
+        browser.execute_script("arguments[0].click();", showInactiveCheckBox[0])
 
-up(s3, file_zeta, "DWP_Report_(All).xlsx")
+        # Find the index of 'Owen Schaefer'
+        start_index = None
+        for i, full_name in enumerate(sessions_left["Full Name"]):
+            if full_name == 'Owen Schaefer':
+                start_index = i
+                break
 
-print("Digital workout plans scraped.")
+        if start_index is None:
+            print("Could not find 'Owen Schaefer' in the list")
+            browser.quit()
+            return
 
-# ------------------------------------------------------------------------------------------------
+        # Start from Owen Schaefer
+        for i in range(len(sessions_left)):
+            
+            full_name = sessions_left["Full Name"][i]
+            print(f'Processing: {full_name}')
 
-# 4. Scrape Learning Plans
+            browser.execute_script("arguments[0].click();", studentDropdown[0])
 
-inactive_students = []
+            string_match = "//*[contains(text(), " + "'" + full_name + "'" + ")]"
 
-all_student_LP = {}
+            try:
+                # wait up to 10 seconds for the element to be clickable
+                student_dropdown_item = wait.until(EC.element_to_be_clickable((By.XPATH, string_match)))
+                browser.execute_script("arguments[0].click();", student_dropdown_item)
 
-url = 'https://radius.mathnasium.com/LearningPlan'
-browser.get(url)
+            except TimeoutException:
+                print("Element not clickable—doing something else instead.")
+                inactive_students.append(full_name)
+                continue
+            
+            lp, file_eta, filename = export_excel(wait, temp_dir)
 
-studentDropdown = wait.until(EC.presence_of_all_elements_located((By.ID, "studentDropDownList")))
+            if len(filename.split(" "))<2:
+                print('Anomalous file')
+                print(filename)
+                continue
 
-showInactiveCheckBox = wait.until(EC.presence_of_all_elements_located((By.ID, "showinactive")))
-browser.execute_script("arguments[0].click();", showInactiveCheckBox[0])
+            with open(file_eta, "rb") as f:
+                name = filename.split(" ")[0] + " " + filename.split(" ")[1] + ".xlsx"
+                print(name)
+                s3.upload_fileobj(f, bucket, "learning_plans/"+name)
 
-# Find the index of 'Owen Schaefer'
-# start_index = None
-# for i, full_name in enumerate(sessions_left["Full Name"]):
-#     if full_name == 'Owen Schaefer':
-#         start_index = i
-#         break
+        print("Learning plans scraped.")
+        browser.quit()
 
-# if start_index is None:
-#     print("Could not find 'Owen Schaefer' in the list")
-#     exit()
+        deploy()
 
-# Start from Owen Schaefer
-#for i in range(start_index, len(sessions_left)):
-for i in range(len(sessions_left)):
-    
-    full_name = sessions_left["Full Name"][i]
-    print(f'Processing: {full_name}')
-
-    browser.execute_script("arguments[0].click();", studentDropdown[0])
-
-    string_match = "//*[contains(text(), " + "'" + full_name + "'" + ")]"
-
-    try:
-        # wait up to 10 seconds for the element to be clickable
-        student_dropdown_item = wait.until(EC.element_to_be_clickable((By.XPATH, string_match)))
-        browser.execute_script("arguments[0].click();", student_dropdown_item)
-
-    except TimeoutException:
-        print("Element not clickable—doing something else instead.")
-        inactive_students.append(full_name)
-        continue
-    
-    # Just need to wrap up S3 upload for Learning
-    # Plans then auto scraping should be wrapped up!
-    lp, file_eta, filename = export_excel(wait)
-
-    if len(filename.split(" "))<2:
-        print('Anomalous file')
-        print(filename)
-        continue
-
-    with open(file_eta, "rb") as f:
-        name = filename.split(" ")[0] + " " + filename.split(" ")[1] + ".xlsx"
-        print(name)
-        s3.upload_fileobj(f, bucket, "learning_plans/"+name)
-
-print("Learning plans scraped.")
-
-deploy()
+if __name__ == "__main__":
+    main()
