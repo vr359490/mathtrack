@@ -222,7 +222,7 @@ try:
     print("Learning plans scraped.")
     print(f"Inactive students: {inactive_students}")
 
-    deploy()
+    # deploy()
 
 finally:
     browser.quit()
