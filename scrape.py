@@ -107,7 +107,7 @@ url = "https://radius.mathnasium.com/Attendance/Roster"
 browser, download_path = get_browser(url)
 
 try:
-    wait = WebDriverWait(browser, 20)  # Increased wait time
+    wait = WebDriverWait(browser, 60)  # Increased wait time
 
     login(browser, wait)
     print("Logged in successfully")
