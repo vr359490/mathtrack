@@ -39,9 +39,23 @@ def up(s3, file_path, save_as):
 def get_browser(url):
     options = webdriver.ChromeOptions()
 
-    # options.add_argument("--headless")
+    options.add_argument("--headless")
     options.add_experimental_option("prefs", {'profile.default_content_setting_values.automatic_downloads': 1})
     options.add_argument('--disable-dev-shm-usage')
+
+    # Add these for GitHub Actions compatibility
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-web-security")
+    options.add_argument("--allow-running-insecure-content")
+    options.add_argument("--disable-background-timer-throttling")
+    options.add_argument("--disable-backgrounding-occluded-windows")
+    options.add_argument("--disable-renderer-backgrounding")
+    options.add_argument("--disable-features=TranslateUI")
+    options.add_argument("--remote-debugging-port=9222")
+
+    
     browser = webdriver.Chrome(options=options)
     browser.get(url)
     return browser
